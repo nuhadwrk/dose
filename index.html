@@ -33,16 +33,16 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       padding: 16px;
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       transition: background-color 0.3s, color 0.3s;
     }
-    h1 { font-size: 1.2rem; margin-bottom: 12px; text-align: center; }
+    h1 { font-size: 1.4rem; margin-bottom: 12px; text-align: center; }
     .top-buttons {
       position: fixed; top: 8px; right: 8px; z-index: 10;
       display: flex; gap: 6px;
     }
     button {
-      padding: 6px 12px; font-size: 0.9rem;
+      padding: 6px 12px; font-size: 1rem;
       background-color: var(--primary); color: #fff;
       border: none; border-radius: 6px;
       cursor: pointer; transition: background-color 0.25s ease;
@@ -52,9 +52,10 @@
       display: flex; flex-wrap: wrap; gap: 8px;
       justify-content: center; margin-bottom: 12px;
     }
-    label { font-weight: 600; font-size: 0.85rem; }
+    label { font-weight: 600; font-size: 1rem; }
     input[type="number"] {
-      padding: 6px; font-size: 0.85rem;
+      padding: 8px;
+      font-size: 18px; /* iPhone zoom fix + improved size */
       border: 1px solid var(--border-color);
       border-radius: 6px; width: 90px;
       background: var(--card-bg); color: var(--text-color);
@@ -70,19 +71,20 @@
       max-width: 100%;
       width: fit-content;
       text-align: center;
-      font-size: 0.9rem;
+      font-size: 1rem;
       font-weight: 600;
     }
     .table-wrapper {
       overflow-x: auto; background: var(--card-bg);
       border-radius: 8px; box-shadow: var(--shadow);
-      padding: 0; margin: 0 auto;
+      padding: 0 2px; margin: 0 auto;
       display: block; width: fit-content; max-width: 100%;
+      font-size: 0.95rem;
     }
     table { border-collapse: collapse; width: 100%; }
     th, td {
       padding: 6px 8px; text-align: left;
-      font-size: 0.9rem; border-bottom: 1px solid var(--border-color);
+      font-size: 1rem; border-bottom: 1px solid var(--border-color);
       white-space: nowrap; vertical-align: top;
     }
     th {
@@ -99,18 +101,18 @@
     }
 
     .conc {
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       color: gray;
     }
 
     /* Responsive (Mobile) */
     @media (max-width: 480px) {
-      body { font-size: 1rem; }
-      h1 { font-size: 1rem; }
+      body { padding: 4px; }
+      .table-wrapper { padding: 0 2px; font-size: 0.95rem; }
+      th, td { font-size: 0.9rem; padding: 6px 4px; }
+      h1 { font-size: 1.2rem; }
       .controls { flex-direction: column; align-items: stretch; }
-      input[type="number"] { width: 100%; }
-      .table-wrapper { font-size: 0.8rem; }
-      th, td { font-size: 0.75rem; padding: 2px 10px; }
+      input[type="number"] { width: 100%; font-size: 18px; }
     }
   </style>
 </head>
