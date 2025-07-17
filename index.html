@@ -55,9 +55,9 @@
     label { font-weight: 600; font-size: 1rem; }
     input[type="number"] {
       padding: 8px;
-      font-size: 18px; /* iPhone zoom fix + improved size */
+      font-size: 18px;
       border: 1px solid var(--border-color);
-      border-radius: 6px; width: 90px;
+      border-radius: 6px;
       background: var(--card-bg); color: var(--text-color);
     }
     .fluid-card {
@@ -93,19 +93,15 @@
     }
     [data-theme="dark"] th { background: #33364d; }
     tr:last-child td { border-bottom: none; }
-
     .cell-content {
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
     }
-
     .conc {
       font-size: 0.75rem;
       color: gray;
     }
-
-    /* Responsive (Mobile) */
     @media (max-width: 480px) {
       body { padding: 4px; }
       .table-wrapper { padding: 0 2px; font-size: 0.95rem; }
@@ -113,6 +109,34 @@
       h1 { font-size: 1.2rem; }
       .controls { flex-direction: column; align-items: stretch; }
       input[type="number"] { width: 100%; font-size: 18px; }
+    }
+    @media (min-width: 481px) {
+      .table-wrapper {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 16px 24px;
+        font-size: 1.05rem;
+      }
+      .dose-input {
+        width: 100px !important;
+        font-size: 1.1rem;
+        padding: 8px 10px;
+      }
+      .conc {
+        display: inline;
+        font-size: 0.85rem;
+        color: gray;
+        margin-left: 6px;
+      }
+      table {
+        table-layout: fixed;
+        width: 100%;
+      }
+      th:nth-child(1), td:nth-child(1) { width: 30%; }
+      th:nth-child(2), td:nth-child(2) { width: 16%; }
+      th:nth-child(3), td:nth-child(3) { width: 18%; }
+      th:nth-child(4), td:nth-child(4) { width: 16%; }
+      th:nth-child(5), td:nth-child(5) { width: 20%; }
     }
   </style>
 </head>
@@ -126,10 +150,7 @@
     <input type="number" id="weight" min="0" step="1" placeholder="Enter weight">
     <button onclick="calculateDoses()">Calculate</button>
   </div>
-
-  <!-- Fluid Output Card -->
   <div id="fluidOutput" class="fluid-card">Fluid: -</div>
-
   <div class="table-wrapper">
     <table>
       <thead>
@@ -140,7 +161,6 @@
       <tbody id="output"></tbody>
     </table>
   </div>
-
   <script>
     const drugs = [
       { name: "Paracetamol ", concText: "IV/SUPP", dosePerKg: 15, conc: null, freq: "STAT" },
@@ -180,20 +200,17 @@
       out.innerHTML = "";
       const fluid = calculateFluidRate(w);
       const bolus = w * 10;
-
       const fluidLine = w
         ? `Fluid (ml/hr): FM ${fluid.toFixed(1)} | 2/3M ${(fluid * 2 / 3).toFixed(1)} | 1/2M ${(fluid / 2).toFixed(1)} | Bolus 10ml/kg: ${bolus.toFixed(1)} ml`
         : "Fluid: -";
-
       document.getElementById("fluidOutput").innerText = fluidLine;
-
       drugs.forEach((d, i) => {
         const dose = d.dosePerKg * w;
         const mg = dose > 0 ? `${dose.toFixed(1)} mg` : "-";
         const ml = dose > 0 && d.conc ? (dose / d.conc).toFixed(2) : "-";
         out.insertAdjacentHTML("beforeend", `<tr>
-          <td data-label="drug"><div class="cell-content">${d.name}${d.concText ? `<span class="conc">${d.concText}</span>` : ""}</div></td>
-          <td><div class="cell-content"><input type="number" value="${d.dosePerKg}" step="0.1" data-index="${i}" onchange="updateDose(this)" style="width:60px;"></div></td>
+          <td><div class="cell-content">${d.name}<span class="conc">${d.concText}</span></div></td>
+          <td><div class="cell-content"><input type="number" class="dose-input" value="${d.dosePerKg}" step="0.1" data-index="${i}" onchange="updateDose(this)"></div></td>
           <td><div class="cell-content">${mg}</div></td>
           <td><div class="cell-content">${ml}</div></td>
           <td><div class="cell-content">${d.freq}</div></td>
