@@ -83,7 +83,7 @@
     th, td {
       padding: 6px 8px; text-align: left;
       font-size: 0.9rem; border-bottom: 1px solid var(--border-color);
-      white-space: nowrap;
+      white-space: nowrap; vertical-align: top;
     }
     th {
       background: #f7f9fb; font-weight: 600;
@@ -92,6 +92,17 @@
     [data-theme="dark"] th { background: #33364d; }
     tr:last-child td { border-bottom: none; }
 
+    .cell-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .conc {
+      font-size: 0.7rem;
+      color: gray;
+    }
+
     /* Responsive (Mobile) */
     @media (max-width: 480px) {
       body { font-size: 1rem; }
@@ -99,46 +110,8 @@
       .controls { flex-direction: column; align-items: stretch; }
       input[type="number"] { width: 100%; }
       .table-wrapper { font-size: 0.8rem; }
-      th, td { font-size: 0.75rem; }
-
-      td[data-label="drug"] {
-        display: flex;
-        flex-direction: column;
-        line-height: 1.2;
-      }
-      td[data-label="drug"] .conc {
-        font-size: 0.7rem;
-        color: gray;
-      }
-/* Align all table cells to top */
-td, th {
-  vertical-align: top;
-}
-
-/* Only affect layout on mobile */
-@media (max-width: 480px) {
-  td[data-label="drug"] {
-    display: block;
-    line-height: 1.2;
-  }
-
-  td[data-label="drug"] .conc {
-    display: block;
-    font-size: 0.7rem;
-    color: gray;
-    margin-top: 2px;
-  }
-
-  /* Optional: tighter padding for mobile */
-  td, th {
-    padding: 6px 4px;
-    font-size: 0.75rem;
-  }
-
-  .table-wrapper {
-    font-size: 0.75rem;
-  }
-}
+      th, td { font-size: 0.75rem; padding: 6px 4px; }
+    }
   </style>
 </head>
 <body>
@@ -217,9 +190,12 @@ td, th {
         const mg = dose > 0 ? `${dose.toFixed(1)} mg` : "-";
         const ml = dose > 0 && d.conc ? (dose / d.conc).toFixed(2) : "-";
         out.insertAdjacentHTML("beforeend", `<tr>
-          <td data-label="drug">${d.name}${d.concText ? `<span class="conc">${d.concText}</span>` : ""}</td>
-          <td><input type="number" value="${d.dosePerKg}" step="0.1" data-index="${i}" onchange="updateDose(this)" style="width:60px;"></td>
-          <td>${mg}</td><td>${ml}</td><td>${d.freq}</td></tr>`);
+          <td data-label="drug"><div class="cell-content">${d.name}${d.concText ? `<span class="conc">${d.concText}</span>` : ""}</div></td>
+          <td><div class="cell-content"><input type="number" value="${d.dosePerKg}" step="0.1" data-index="${i}" onchange="updateDose(this)" style="width:60px;"></div></td>
+          <td><div class="cell-content">${mg}</div></td>
+          <td><div class="cell-content">${ml}</div></td>
+          <td><div class="cell-content">${d.freq}</div></td>
+        </tr>`);
       });
     }
 
