@@ -2,7 +2,7 @@
   "name": "Pediatric Dosage Calculator",
   "short_name": "DosageCalc",
   "description": "A Progressive Web App for calculating pediatric medication dosages",
-  "start_url": "/index.html",
+  "start_url": "dose/index.html",
   "display": "standalone",
   "background_color": "#f0f4f8",
   "theme_color": "#2a9d8f",
