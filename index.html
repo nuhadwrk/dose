@@ -189,11 +189,12 @@
       th:nth-child(4), td:nth-child(4) { width: 16%; }
       th:nth-child(5), td:nth-child(5) { width: 20%; }
     }
-    @media (display-mode: standalone) {
-      body {
-        height: 100%;
-        overflow: hidden;
-      }
+@media (display-mode: standalone) {
+  html, body {
+    height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
     }
   </style>
 </head>
