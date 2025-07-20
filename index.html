@@ -256,7 +256,10 @@ tr.touched td {
       drugs.forEach((d, i) => {
         const dose = d.dosePerKg * w;
         const mg = dose > 0 ? `${dose.toFixed(1)} mg` : "-";
-        const ml = dose > 0 && d.conc ? (dose / d.conc).toFixed(2) : "-";
+        const ml = dose > 0 && typeof d.conc === "number" && d.conc > 0
+  ? `${(dose / d.conc).toFixed(2)} ml`
+  : "-";
+
         out.insertAdjacentHTML("beforeend", `<tr>
           <td><div class="cell-content">${d.name}<span class="conc">${d.concText}</span></div></td>
           <td><div class="cell-content"><input type="number" class="dose-input" value="${d.dosePerKg}" step="0.1" data-index="${i}" onchange="updateDose(this)"></div></td>
