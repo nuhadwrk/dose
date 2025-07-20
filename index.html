@@ -70,6 +70,20 @@ tr:hover td {
 [data-theme="dark"] tr:hover td {
   background-color: #2e3b50;
 }
+tr:hover td {
+  background-color: #e8f1f3;
+}
+[data-theme="dark"] tr:hover td {
+  background-color: #2e3b50;
+}
+
+/* Touch highlight (mobile compatible) */
+tr.touched td {
+  background-color: #d1ecf1;
+}
+[data-theme="dark"] tr.touched td {
+  background-color: #2e3b50;
+}
 
 
     .controls {
@@ -274,6 +288,16 @@ tr:hover td {
       document.getElementById("themeBtn").innerText = saved === "dark" ? "🌙" : "🌞";
       calculateDoses();
     })();
+document.addEventListener("click", function (e) {
+  const rows = document.querySelectorAll("tbody tr");
+  rows.forEach(row => row.classList.remove("touched"));
+
+  let targetRow = e.target.closest("tr");
+  if (targetRow && targetRow.parentElement.tagName === "TBODY") {
+    targetRow.classList.add("touched");
+  }
+});
+
   </script>
 </body>
 </html>
