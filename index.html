@@ -1,306 +1,879 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pediatric Dosage Calculator</title>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
 
-  <!-- Required for iOS web app behavior -->
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Pediatric Handover System</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="DosageCalc">
+  <meta name="apple-mobile-web-app-title" content="PaedWard">
   <meta name="theme-color" content="#2a9d8f">
-
-  <!-- Icons -->
-  <link rel="manifest" href="/dose/manifest.json">
-  <link rel="apple-touch-icon" sizes="180x180" href="/dose/icon-180.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="/dose/icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="/dose/icon-512.png">
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/pediatric-handover/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/pediatric-handover/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/pediatric-handover/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/pediatric-handover/icon-512.png">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     :root {
-      --bg-color: #f0f4f8;
-      --text-color: #1d3557;
+      --bg: #f4f7fb;
+      --primary: #0066cc;
+      --primary-dark: #004a99;
+      --accent: #2a9d8f;
+      --text: #1d3557;
       --card-bg: #ffffff;
-      --border-color: #e0e0e0;
-      --primary: #2a9d8f;
-      --primary-hover: #21867a;
-      --shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+      --border: #aaa;
+      --editable-border: #ccc;
+      --editable-focus: #888;
+      --PW: #d1e7ff;
+      --GW: #fde2e4;
+      --SW: #e2f0cb;
+      --PVT: #fff3cd;
+      --ICU: #d4edda;
+      --NICU: #f8d7da;
+      --new-btn: #f6a623;
+      /* Panel sizing */
+      --panel-width: 460px;
+      --panel-height: 360px; /* Increased from 320px to fit summary card content */
     }
     [data-theme="dark"] {
-      --bg-color: #1e1e2f;
-      --text-color: #e0e0e0;
-      --card-bg: #2a2a3d;
-      --border-color: #444;
-      --primary: #00bfa6;
-      --primary-hover: #009d88;
-      --shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      --bg: #1a202c;
+      --primary: #4299e1;
+      --primary-dark: #2b6cb0;
+      --accent: #38b2ac;
+      --text: #e2e8f0;
+      --card-bg: #2d3748;
+      --shadow: 0 4px 12px rgba(0,0,0,0.3);
+      --border: #4a5568;
+      --editable-border: #718096;
+      --editable-focus: #a0aec0;
+      --PW: #2c5282;
+      --GW: #9b2c2c;
+      --SW: #5a7f3f;
+      --PVT: #b7791f;
+      --ICU: #276749;
+      --NICU: #9b2c2c;
+      --new-btn: #f6a623;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Inter", sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      padding: 16px;
-      font-size: 1.15rem;
-      transition: background-color 0.3s, color 0.3s;
-      min-height: 100vh;
-    }
-    h1 { font-size: 1.4rem; margin-bottom: 12px; text-align: center; }
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { margin: 0; padding: 24px; background: var(--bg); color: var(--text); }
+    h1 { margin: 0 0 24px; text-align: center; font-weight: 700; }
     .top-buttons {
-      position: fixed; top: 8px; right: 8px; z-index: 10;
-      display: flex; gap: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
     }
-    button {
-      padding: 6px 12px; font-size: 1rem;
-      background-color: var(--primary); color: #fff;
-      border: none; border-radius: 6px;
-      cursor: pointer; transition: background-color 0.25s ease;
-    }
-    button:hover { background-color: var(--primary-hover); }
-
-    /* Light mode hover */
-tr:hover td {
-  background-color: #e8f1f3;
-}
-
-/* Dark mode hover */
-[data-theme="dark"] tr:hover td {
-  background-color: #2e3b50;
-}
-tr:hover td {
-  background-color: #e8f1f3;
-}
-[data-theme="dark"] tr:hover td {
-  background-color: #2e3b50;
-}
-
-/* Touch highlight (mobile compatible) */
-tr.touched td {
-  background-color: #d1ecf1;
-}
-[data-theme="dark"] tr.touched td {
-  background-color: #2e3b50;
-}
-
-
-    .controls {
-      display: flex; flex-wrap: wrap; gap: 8px;
-      justify-content: center; margin-bottom: 12px;
-    }
-    label { font-weight: 600; font-size: 1rem; }
-    input[type="number"] {
-      padding: 8px;
-      font-size: 18px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background: var(--card-bg); color: var(--text-color);
-    }
-    .fluid-card {
-      background-color: var(--card-bg);
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
+    .top-buttons button {
+      padding: 10px 20px;
+      font-weight: 600;
+      border: none;
       border-radius: 8px;
-      box-shadow: var(--shadow);
-      margin: 0 auto 12px;
-      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .top-buttons button:hover { transform: translateY(-2px); }
+    .add { background: var(--primary); color: #fff; }
+    .add:hover { background: var(--primary-dark); }
+    .print { background: var(--accent); color: #fff; }
+    .print:hover { background: #2c7a7b; }
+    .theme-toggle {
+      background: #6b7280;
+      color: #fff;
+      font-size: 18px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .theme-toggle:hover { background: #4b5563; }
+    .theme-toggle::before { content: '☀'; }
+    [data-theme="dark"] .theme-toggle::before { content: '🌙'; }
+
+    /* Panels row: always side-by-side (scroll on mobile if needed) */
+    .top-panel {
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+      justify-content: center;
+      margin: 0 auto 24px;
       max-width: 100%;
-      width: fit-content;
+      flex-wrap: nowrap;         /* keep in a row */
+      overflow-x: auto;          /* allow horizontal scroll on small screens */
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;       /* room for scrollbar */
+    }
+    .panel-card {
+      background: var(--card-bg);
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      width: var(--panel-width);
+      height: var(--panel-height);
+      flex: 0 0 var(--panel-width); /* fixed width in the horizontal row */
+    }
+    #handoverHeader {
+      overflow: hidden; /* Remove scrolling for summary card */
+    }
+    #notesCard {
+      overflow: auto; /* Keep scrolling for notes if needed */
+    }
+
+    /* Summary card visuals */
+    #handoverHeader table {
+      margin: 16px 0 0 0;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    #handoverHeader th, #handoverHeader td {
+      border: none;
+      padding: 6px;
+      font-size: 14px;
+      vertical-align: top;
+    }
+    #handoverHeader th { background: var(--bg); }
+    #handoverHeader input {
+      width: 60px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
       text-align: center;
-      font-size: 1rem;
+      background: var(--card-bg);
+      color: var(--text);
+    }
+
+    /* Notes card */
+    #notesCard strong { display: block; margin-bottom: 8px; }
+    #notesText {
+      width: 100%;
+      min-height: 180px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      resize: vertical;
+    }
+
+    .form-section {
+      display: none;
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 520px;
+      margin: 0 auto 32px;
+      box-shadow: var(--shadow);
+    }
+    .form-section input, .form-section select, .form-section textarea {
+      width: 100%;
+      margin: 6px 0 12px;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .form-section button {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
       font-weight: 600;
     }
-    .table-wrapper {
-      overflow-x: auto; background: var(--card-bg);
-      border-radius: 8px; box-shadow: var(--shadow);
-      padding: 0 2px; margin: 0 auto;
-      display: block; width: fit-content; max-width: 100%;
-      font-size: 0.95rem;
+    .ward-header {
+      text-align: center;
+      font-size: 20px;
+      font-weight: 600;
+      margin: 32px 0 8px;
+      padding: 8px;
+      border-radius: 8px;
     }
-    table { border-collapse: collapse; width: 100%; }
-    th, td {
-      padding: 6px 8px; text-align: left;
-      font-size: 1rem; border-bottom: 1px solid var(--border-color);
-      white-space: nowrap; vertical-align: top;
+    .patient-card {
+      background: var(--card-bg);
+      width: 300px;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      position: relative;
+      transition: transform 0.18s;
+      padding-top: 40px;
     }
-    th {
-      background: #f7f9fb; font-weight: 600;
-      position: sticky; top: 0;
+    .patient-card:hover { transform: scale(1.015); }
+    .patient-card p { margin: 4px 0; }
+    .patient-card p strong { font-weight: 700; }
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+      opacity: 0.7;
+      background: #e63946;
+      color: #fff;
     }
-    [data-theme="dark"] th { background: #33364d; }
-    tr:last-child td { border-bottom: none; }
-    .cell-content {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
+    .delete-btn:hover { opacity: 0.85; }
+    .new-badge {
+      position: absolute;
+      top: 10px;
+      right: 40px; /* Adjusted for spacing with delete button */
+      background: var(--new-btn);
+      color: #fff;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      display: none;
+      opacity: 0.7;
     }
-    .conc {
-      font-size: 0.75rem;
-      color: gray;
+    .new-badge.new-active { display: block; }
+    .new-checkbox { margin-top: 8px; }
+    .editable {
+      border: none;
+      background: transparent;
+      border-bottom: 1px dashed var(--editable-border);
+      padding: 0 4px;
+      min-width: 20px;
+      white-space: pre-wrap;
     }
-    @media (max-width: 480px) {
-      body { padding: 4px; }
-      .table-wrapper { padding: 0 2px; font-size: 0.95rem; }
-      th, td { font-size: 0.9rem; padding: 6px 4px; }
-      h1 { font-size: 1.2rem; }
-      .controls { flex-direction: column; align-items: stretch; }
-      input[type="number"] { width: 100%; font-size: 18px; }
+    .editable:focus {
+      outline: none;
+      border-bottom: 1px solid var(--editable-focus);
     }
-    @media (min-width: 481px) {
-      .table-wrapper {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 16px 24px;
-        font-size: 1.05rem;
-      }
-      .dose-input {
-        width: 100px !important;
-        font-size: 1.1rem;
-        padding: 8px 10px;
-      }
-      .conc {
-        display: inline;
-        font-size: 0.85rem;
-        color: gray;
-        margin-left: 6px;
-      }
-      table {
-        table-layout: fixed;
-        width: 100%;
-      }
-      th:nth-child(1), td:nth-child(1) { width: 30%; }
-      th:nth-child(2), td:nth-child(2) { width: 16%; }
-      th:nth-child(3), td:nth-child(3) { width: 18%; }
-      th:nth-child(4), td:nth-child(4) { width: 16%; }
-      th:nth-child(5), td:nth-child(5) { width: 20%; }
+    .card-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    .hopi-toggle {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 600;
+      margin: 4px 0;
     }
-@media (display-mode: standalone) {
-  html, body {
-    height: 100%;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-    }
-  </style>
-</head>
-<!-- rest of your body remains unchanged -->
+    .hopi-content { display: none; color: var(--text); }
+    .hopi-content.expanded { display: block; }
 
+    /* Keep side-by-side on all sizes; no column fallback */
+    /* (No media query altering .top-panel layout) */
+
+    .print-window { padding: 20px; }
+    .copy-btn {
+      padding: 10px 20px;
+      font-weight: 600;
+      background: #6b7280;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: background 0.2s;
+    }
+    .copy-btn:hover { background: #4b5563; }
+    pre { white-space: pre-wrap; font-family: 'Inter', monospace; }
   </style>
 </head>
 <body>
-  <div class="top-buttons">
-    <button id="themeBtn" onclick="toggleTheme()" title="Toggle Theme">🌞</button>
-  </div>
-  <h1>Pediatric Dosage Calculator</h1>
-  <div class="controls">
-    <label for="weight">Weight (kg):</label>
-    <input type="number" id="weight" min="0" step="1" placeholder="Enter weight">
-    <button onclick="calculateDoses()">Calculate</button>
-  </div>
-  <div id="fluidOutput" class="fluid-card">Fluid: -</div>
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr>
-          <th>Drug</th><th>Mg/Kg/Dose</th><th>Mg/Dose</th><th>(ml)</th><th>Freq</th>
-        </tr>
-      </thead>
-      <tbody id="output"></tbody>
-    </table>
-  </div>
-  <script>
-    const drugs = [
-      { name: "Paracetamol ", concText: "IV/SUPP", dosePerKg: 15, conc: null, freq: "STAT" },
-      { name: "Paracetamol ", concText: "250mg/5ml", dosePerKg: 15, conc: 50, freq: "TDS" },
-      { name: "Paracetamol ", concText: "120mg/5ml", dosePerKg: 15, conc: 24, freq: "TDS" },
-      { name: "Paracetamol ", concText: "Drops 80mg/ml", dosePerKg: 10, conc: 80, freq: "TDS" },
-      { name: "Cetirizine ", concText: "5mg/5ml", dosePerKg: 0.25, conc: 1, freq: "HS" },
-      { name: "Levocetirizine ", concText: "2.5mg/5ml", dosePerKg: 0.125, conc: 0.5, freq: "HS" },
-      { name: "Ondansetron ", concText: "IV", dosePerKg: 0.15, conc: null, freq: "STAT" },
-      { name: "Ondansetron ", concText: "2mg/5ml", dosePerKg: 0.15, conc: 0.4, freq: "TDS" },
-      { name: "Cefo-L ", concText: "50mg/5ml", dosePerKg: 4, conc: 10, freq: "BD" },
-      { name: "Bactoclav ", concText: "125+31.25mg/5ml", dosePerKg: 25, conc: 31.2, freq: "BD" },
-      { name: "Bactoclav ", concText: "250+62.5mg/5ml", dosePerKg: 25, conc: 62.4, freq: "BD" },
-      { name: "Azithromycin ", concText: "200mg/5ml", dosePerKg: 10, conc: 40, freq: "OD" },
-      { name: "Cefuroxime ", concText: "125mg/5ml", dosePerKg: 15, conc: 25, freq: "BD" },
-      { name: "Ibuprofen ", concText: "100mg/5ml", dosePerKg: 10, conc: 20, freq: "TDS" },
-      { name: "Meftal ", concText: "50mg/5ml", dosePerKg: 6.5, conc: 10, freq: "TDS" },
-      { name: "Meftal ", concText: "125mg/5ml", dosePerKg: 6.5, conc: 25, freq: "TDS" },
-      { name: "Ranitidine ", concText: "75mg/5ml", dosePerKg: 5, conc: 15, freq: "BD" },
-      { name: "Domperidone ", concText: "5mg/5ml", dosePerKg: 0.4, conc: 1, freq: "TDS" },
-      { name: "Acyclovir ", concText: "400mg/5ml", dosePerKg: 20, conc: 80, freq: "QID" },
-      { name: "Inj Ceftriaxone ", concText: "IV", dosePerKg: 25, conc: null, freq: "BD" },
-      { name: "Inj Cefuroxime ", concText: "IV", dosePerKg: 50, conc: null, freq: "BD" },
-      { name: "Hydrocortisone ", concText: "IV", dosePerKg: 2, conc: null, freq: "STAT" },
-      { name: "Buscopan ", concText: "IV", dosePerKg: 0.4, conc: null, freq: "TDS" },
-      { name: "Pantop ", concText: "IV/PO", dosePerKg: 1.0, conc: null, freq: "OD" },
-      { name: "Inj Midaz ", concText: "IV", dosePerKg: 0.2, conc: null, freq: "STAT" }
-    ];
+  <h1>Pediatric Handover</h1>
 
-    function calculateFluidRate(w) {
-      return w <= 0 ? 0 : w <= 10 ? w * 4 : w <= 20 ? 40 + (w - 10) * 2 : 60 + (w - 20);
+  <div class="top-buttons">
+    <button class="add" onclick="toggleForm()">Add Patient</button>
+    <button class="print" onclick="printAll()">Print All</button>
+    <button class="print" onclick="printNICU()">Print NICU</button>
+    <button class="print" onclick="printWard()">Print Ward</button>
+    <button class="print" onclick="printNew()">Print New</button>
+    <button class="theme-toggle" onclick="toggleDarkMode()" aria-label="Toggle theme"></button>
+  </div>
+
+  <!-- Centered, equal-size panels (always side-by-side; scroll on mobile) -->
+  <div class="top-panel">
+    <div id="handoverHeader" class="panel-card">
+      <strong>Date:</strong> <span id="handoverDate">2025-08-05</span>
+      <table>
+        <tbody>
+          <tr><th></th><th>Morning</th><th>Evening</th><th>Night</th></tr>
+          <tr>
+            <td>Admissions</td>
+            <td><input type="number" id="adM" value="0" min="0" oninput="recalcSummary()"></td>
+            <td><input type="number" id="adE" value="0" min="0" oninput="recalcSummary()"></td>
+            <td><input type="number" id="adN" value="0" min="0" oninput="recalcSummary()"></td>
+          </tr>
+          <tr>
+            <td>Discharges</td>
+            <td><input type="number" id="disM" value="0" min="0" oninput="recalcSummary()"></td>
+            <td><input type="number" id="disE" value="0" min="0" oninput="recalcSummary()"></td>
+            <td><input type="number" id="disN" value="0" min="0" oninput="recalcSummary()"></td>
+          </tr>
+          <tr><td>Total Admissions</td><td colspan="3" id="totalAd">2</td></tr>
+          <tr><td>Total Discharges</td><td colspan="3" id="totalDis">1</td></tr>
+          <tr><td>Total Patients</td><td colspan="3" id="totalCount">12</td></tr>
+          <!-- NEW: ward breakdown row -->
+          <tr>
+            <td>By ward</td>
+            <td colspan="3" id="wardBreakdown">PW (0), GW (0), SW (0), PVT (0), ICU (0), NICU (0)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="notesCard" class="panel-card">
+      <strong>Notes/Pending work</strong>
+      <textarea id="notesText" placeholder="Type pending tasks, callbacks, follow-ups..."></textarea>
+    </div>
+  </div>
+
+  <div class="form-section" id="formSection">
+    <input type="text" id="name" placeholder="Name" required>
+    <input type="text" id="id" placeholder="ID" required>
+    <input type="date" id="doa" placeholder="Date of Admission" required>
+    <select id="shift" required>
+      <option value="Morning">Morning Shift</option>
+      <option value="Evening">Evening Shift</option>
+      <option value="Night">Night Shift</option>
+    </select>
+    <input type="text" id="bed" placeholder="Bed" required>
+    <input type="text" id="age" placeholder="Age" required>
+    <select id="sex">
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+    <input type="text" id="diagnosis" placeholder="Diagnosis">
+    <input type="text" id="medications" placeholder="Medications">
+    <input type="text" id="issues" placeholder="Issues">
+    <textarea id="hopi" placeholder="HOPI"></textarea>
+    <select id="ward">
+      <option value="PW">PW</option>
+      <option value="GW">GW</option>
+      <option value="SW">SW</option>
+      <option value="PVT">PVT</option>
+      <option value="ICU">ICU</option>
+      <option value="NICU">NICU</option>
+    </select>
+    <textarea id="plan" placeholder="Plan"></textarea>
+    <label><input type="checkbox" id="isNew" checked> New</label>
+    <button onclick="addPatient()">Submit</button>
+  </div>
+
+  <div id="wardsContainer"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC3_DD-ezlWahQeCdPLcFh_lohLn63Q7eY",
+      authDomain: "pediatric-handover.firebaseapp.com",
+      projectId: "pediatric-handover",
+      storageBucket: "pediatric-handover.appspot.com",
+      messagingSenderId: "104007714087",
+      appId: "1:104007714087:web:77811513530b0ee9859502"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    document.getElementById("handoverDate").innerText = new Date().toISOString().split("T")[0];
+    document.getElementById("doa").value = new Date().toISOString().split("T")[0];
+
+    // ===== Notes: Firestore-sync across devices =====
+    const notesEl = document.getElementById('notesText');
+    const NOTES_DOC = db.collection('meta').doc('notes');
+    let notesTyping = false;
+    let notesDebounce;
+
+    // Save on input (debounced)
+    notesEl.addEventListener('input', () => {
+      notesTyping = true;
+      if (notesDebounce) clearTimeout(notesDebounce);
+      notesDebounce = setTimeout(() => {
+        NOTES_DOC.set({
+          text: notesEl.value,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).finally(() => {
+          notesTyping = false;
+        });
+      }, 400);
+    });
+
+    // Load + live sync
+    NOTES_DOC.onSnapshot(snap => {
+      const data = snap.data();
+      if (data && typeof data.text === 'string') {
+        // Avoid cursor jump while user is actively typing
+        if (!notesTyping && document.activeElement !== notesEl && notesEl.value !== data.text) {
+          notesEl.value = data.text;
+        }
+      }
+    });
+
+    function toggleForm() {
+      const form = document.getElementById('formSection');
+      form.style.display = (form.style.display === 'block') ? 'none' : 'block';
+    }
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+    }
+    function loadTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+    function addPatient() {
+      const patient = {
+        name: document.getElementById('name').value,
+        id: document.getElementById('id').value,
+        doa: document.getElementById('doa').value,
+        shift: document.getElementById('shift').value,
+        bed: document.getElementById('bed').value,
+        age: document.getElementById('age').value,
+        sex: document.getElementById('sex').value,
+        diagnosis: document.getElementById('diagnosis').value,
+        medications: document.getElementById('medications').value,
+        issues: document.getElementById('issues').value,
+        hopi: document.getElementById('hopi').value,
+        ward: document.getElementById('ward').value,
+        plan: document.getElementById('plan').value,
+        isNew: document.getElementById('isNew').checked,
+        timestamp: Date.now()
+      };
+      db.collection('patients').add(patient).then(() => {
+        document.getElementById('formSection').style.display = 'none';
+        loadPatients();
+      }).catch(error => {
+        console.error("Error adding patient:", error);
+        alert("Failed to add patient.");
+      });
+    }
+    function deletePatient(id) {
+      if (confirm("Are you sure you want to delete this patient? This action cannot be undone.")) {
+        db.collection('patients').doc(id).delete().then(() => {
+          loadPatients();
+        }).catch(error => {
+          console.error("Error deleting patient:", error);
+          alert("Failed to delete patient.");
+        });
+      }
+    }
+    function updateField(id, field, value) {
+      db.collection('patients').doc(id).update({ [field]: value }).catch(error => {
+        console.error(`Error updating ${field}:`, error);
+        alert(`Failed to update ${field}.`);
+        loadPatients();
+      });
+    }
+    function changeWard(id, newWard) {
+      db.collection('patients').doc(id).update({ ward: newWard }).then(loadPatients).catch(error => {
+        console.error("Error changing ward:", error);
+        alert("Failed to change ward.");
+      });
+    }
+    function toggleNewTag(id) {
+      db.collection('patients').doc(id).get().then(doc => {
+        if (doc.exists) {
+          const isNew = !doc.data().isNew;
+          db.collection('patients').doc(id).update({ isNew: isNew }).then(() => {
+            const badge = document.querySelector(`.new-badge[data-id="${id}"]`);
+            if (badge) {
+              badge.classList.toggle('new-active', isNew);
+            }
+            loadPatients();
+          }).catch(error => {
+            console.error("Error toggling new tag:", error);
+            alert("Failed to toggle new tag.");
+          });
+        }
+      });
+    }
+    // HOPI toggle (fixed earlier)
+    function toggleHopi(id) {
+      const content = document.getElementById(`hopi-content-${id}`);
+      const toggle = document.getElementById(`hopi-toggle-${id}`);
+      const newExpanded = !content.classList.contains('expanded');
+      content.classList.toggle('expanded', newExpanded);
+      toggle.setAttribute('aria-expanded', newExpanded);
+      toggle.innerText = newExpanded ? 'HOPI: ▼' : 'HOPI: ►';
     }
 
-    function calculateDoses() {
-      const w = parseFloat(document.getElementById("weight").value) || 0;
-      const out = document.getElementById("output");
-      out.innerHTML = "";
-      const fluid = calculateFluidRate(w);
-      const bolus = w * 10;
-      const fluidLine = w
-        ? `Fluid (ml/hr): FM ${fluid.toFixed(1)} | 2/3M ${(fluid * 2 / 3).toFixed(1)} | 1/2M ${(fluid / 2).toFixed(1)} | Bolus 10ml/kg: ${bolus.toFixed(1)} ml`
-        : "Fluid: -";
-      document.getElementById("fluidOutput").innerText = fluidLine;
-      drugs.forEach((d, i) => {
-        const dose = d.dosePerKg * w;
-        const mg = dose > 0 ? `${dose.toFixed(1)} mg` : "-";
-        const ml = dose > 0 && typeof d.conc === "number" && d.conc > 0
-  ? `${(dose / d.conc).toFixed(2)} ml`
-  : "-";
+    function generateReportHeader(type, date, adM, adE, adN, disM, disE, disN, totalAd, totalDis, totalCount) {
+      if (type === 'NICU') {
+        return `NICU HANDOVER\n` +
+               `Date: ${date}\n` +
+               `Shift: _\n` +
+               `# Total number of neonates: ${totalCount}\n` +
+               `# Number of admissions: _\n` +
+               `# Number of shift outs: _\n` +
+               `# Number of discharges: _\n\n` +
+               `=======================\n\n`;
+      } else if (type === 'Ward') {
+        return `WARD HANDOVER\n` +
+               `Date: ${date}\n` +
+               `Shift: _\n` +
+               `# Total number of patients: ${totalCount}\n` +
+               `# Number of admissions: ${totalAd}\n` +
+               `# Number of discharges: ${totalDis}\n\n` +
+               `=======================\n\n`;
+      } else {
+        let text = `PEDIATRIC HANDOVER REPORT\n`;
+        text += `Date: ${date}\n\n`;
+        text += `ADMISSIONS/DISCHARGES SUMMARY\n`;
+        text += `Admissions (Morning): ${adM}\n`;
+        text += `Admissions (Evening): ${adE}\n`;
+        text += `Admissions (Night): ${adN}\n`;
+        text += `Total Admissions: ${totalAd}\n\n`;
+        text += `Discharges (Morning): ${disM}\n`;
+        text += `Discharges (Evening): ${disE}\n`;
+        text += `Discharges (Night): ${disN}\n`;
+        text += `Total Discharges: ${totalDis}\n\n`;
+        text += `Total Patients: ${totalCount}\n\n`;
+        text += `=======================\n\n`;
+        return text;
+      }
+    }
+    function generatePatientSection(patientsByWard, wards) {
+      let text = '';
+      wards.forEach(ward => {
+        const patients = patientsByWard[ward];
+        if (patients.length > 0) {
+          text += `${ward.toUpperCase()} WARD (${patients.length} patients)\n`;
+          text += '---------------------------------\n';
+          patients.forEach(patient => {
+            const sexAbbr = patient.sex?.charAt(0).toUpperCase() || '';
+            text += `BED ${patient.bed} - ${patient.age}/${sexAbbr}, ${patient.diagnosis || 'N/A'}${patient.isNew ? ' (NEW)' : ''}\n`;
+            if (patient.medications) text += `Medications: ${patient.medications}\n`;
+            if (patient.issues) text += `Issues: ${patient.issues}\n`;
+            if (patient.hopi && patient.isNew) text += `HOPI: ${patient.hopi}\n`;
+            if (patient.plan) text += `Plan: ${patient.plan}\n`;
+            text += '---------------------------------\n';
+          });
+          text += '\n\n';
+        }
+      });
+      return text;
+    }
+    function printReport(type, wardsToInclude, totalPatients) {
+      const date = document.getElementById('handoverDate').innerText;
+      const adM = +document.getElementById('adM').value || 0;
+      const adE = +document.getElementById('adE').value || 0;
+      const adN = +document.getElementById('adN').value || 0;
+      const disM = +document.getElementById('disM').value || 0;
+      const disE = +document.getElementById('disE').value || 0;
+      const disN = +document.getElementById('disN').value || 0;
+      const totalAd = document.getElementById('totalAd').innerText;
+      const totalDis = document.getElementById('totalDis').innerText;
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      db.collection('patients').get().then(snap => {
+        const wards = ["PW", "GW", "SW", "PVT", "ICU", "NICU"];
+        const patientsByWard = {};
+        wards.forEach(ward => patientsByWard[ward] = []);
+        snap.forEach(doc => {
+          const patient = doc.data();
+          const ward = patient.ward;
+          if (wards.includes(ward) && wardsToInclude.includes(ward)) {
+            patientsByWard[ward].push({
+              id: doc.id,
+              ...patient
+            });
+          }
+        });
+        wards.forEach(ward => {
+          patientsByWard[ward].sort((a, b) => {
+            return (parseInt(a.bed) || 0) - (parseInt(b.bed) || 0);
+          });
+        });
+        const reportText = generateReportHeader(type, date, adM, adE, adN, disM, disE, disN, totalAd, totalDis, totalPatients) +
+                          generatePatientSection(patientsByWard, wardsToInclude);
+        const textWindow = window.open('', '_blank');
+        textWindow.document.write(`
+          <html data-theme="${currentTheme}">
+          <head>
+            <title>Handover Report - ${type} - ${date}</title>
+            <style>
+              :root {
+                --bg: ${currentTheme === 'dark' ? '#1a202c' : '#f4f7fb'};
+                --text: ${currentTheme === 'dark' ? '#e2e8f0' : '#1d3557'};
+                --card-bg: ${currentTheme === 'dark' ? '#2d3748' : '#ffffff'};
+              }
+              body { font-family: 'Inter', sans-serif; padding: 20px; background: var(--bg); color: var(--text); }
+              .copy-btn {
+                padding: 10px 20px;
+                font-weight: 600;
+                background: #6b7280;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                margin-bottom: 10px;
+              }
+              .copy-btn:hover { background: #4b5563; }
+              pre { white-space: pre-wrap; font-family: 'Inter', monospace; }
+            </style>
+          </head>
+          <body>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelector('pre').innerText).then(() => alert('Report copied to clipboard!')).catch(() => alert('Failed to copy report'))">Copy</button>
+            <pre>${reportText}</pre>
+          </body>
+          </html>
+        `);
+        textWindow.document.close();
+      }).catch(error => {
+        console.error(`Error generating ${type} report:`, error);
+        alert(`Error generating ${type} report`);
+      });
+    }
+    function printAll() {
+      const totalCount = document.getElementById('totalCount').innerText;
+      printReport('All', ["PW", "GW", "SW", "PVT", "ICU", "NICU"], totalCount);
+    }
+    function printNICU() {
+      db.collection('patients').where('ward', '==', 'NICU').get().then(snap => {
+        printReport('NICU', ['NICU'], snap.size);
+      });
+    }
+    function printWard() {
+      db.collection('patients').where('ward', '!=', 'NICU').get().then(snap => {
+        printReport('Ward', ["PW", "GW", "SW", "PVT", "ICU"], snap.size);
+      });
+    }
+    // Updated: Print only NEW cases, now INCLUDING NICU
+    function printNew() {
+      const date = document.getElementById('handoverDate').innerText;
+      const adM = +document.getElementById('adM').value || 0;
+      const adE = +document.getElementById('adE').value || 0;
+      const adN = +document.getElementById('adN').value || 0;
+      const disM = +document.getElementById('disM').value || 0;
+      const disE = +document.getElementById('disE').value || 0;
+      const disN = +document.getElementById('disN').value || 0;
+      const totalAd = document.getElementById('totalAd').innerText;
+      const totalDis = document.getElementById('totalDis').innerText;
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
 
-        out.insertAdjacentHTML("beforeend", `<tr>
-          <td><div class="cell-content">${d.name}<span class="conc">${d.concText}</span></div></td>
-          <td><div class="cell-content"><input type="number" class="dose-input" value="${d.dosePerKg}" step="0.1" data-index="${i}" onchange="updateDose(this)"></div></td>
-          <td><div class="cell-content">${mg}</div></td>
-          <td><div class="cell-content">${ml}</div></td>
-          <td><div class="cell-content">${d.freq}</div></td>
-        </tr>`);
+      const wardsAll = ["PW", "GW", "SW", "PVT", "ICU", "NICU"];
+      const wardsToInclude = ["PW", "GW", "SW", "PVT", "ICU", "NICU"]; // now includes NICU
+
+      db.collection('patients').where('isNew', '==', true).get().then(snap => {
+        const patientsByWard = {};
+        wardsAll.forEach(w => patientsByWard[w] = []);
+        snap.forEach(doc => {
+          const p = doc.data();
+          if (wardsToInclude.includes(p.ward)) {
+            patientsByWard[p.ward].push({ id: doc.id, ...p });
+          }
+        });
+        // sort by bed
+        wardsToInclude.forEach(w => {
+          patientsByWard[w].sort((a, b) => (parseInt(a.bed) || 0) - (parseInt(b.bed) || 0));
+        });
+
+        const includedCount = wardsToInclude.reduce((sum, w) => sum + patientsByWard[w].length, 0);
+        const header = generateReportHeader('Ward', date, adM, adE, adN, disM, disE, disN, totalAd, totalDis, includedCount);
+        const body = generatePatientSection(patientsByWard, wardsToInclude);
+        const reportText = header + body;
+
+        const textWindow = window.open('', '_blank');
+        textWindow.document.write(`
+          <html data-theme="${currentTheme}">
+          <head>
+            <title>Handover Report - NEW cases - ${date}</title>
+            <style>
+              :root {
+                --bg: ${currentTheme === 'dark' ? '#1a202c' : '#f4f7fb'};
+                --text: ${currentTheme === 'dark' ? '#e2e8f0' : '#1d3557'};
+                --card-bg: ${currentTheme === 'dark' ? '#2d3748' : '#ffffff'};
+              }
+              body { font-family: 'Inter', sans-serif; padding: 20px; background: var(--bg); color: var(--text); }
+              .copy-btn {
+                padding: 10px 20px;
+                font-weight: 600;
+                background: #6b7280;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                margin-bottom: 10px;
+              }
+              .copy-btn:hover { background: #4b5563; }
+              pre { white-space: pre-wrap; font-family: 'Inter', monospace; }
+            </style>
+          </head>
+          <body>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelector('pre').innerText).then(() => alert('Report copied to clipboard!')).catch(() => alert('Failed to copy report'))">Copy</button>
+            <pre>${reportText}</pre>
+          </body>
+          </html>
+        `);
+        textWindow.document.close();
+      }).catch(err => {
+        console.error('Error generating NEW cases report:', err);
+        alert('Error generating NEW cases report');
       });
     }
 
-    function updateDose(el) {
-      const i = el.dataset.index;
-      const val = parseFloat(el.value);
-      if (!isNaN(val)) drugs[i].dosePerKg = val;
-      calculateDoses();
+    function recalcSummary() {
+      const adM = +document.getElementById('adM').value || 0;
+      const adE = +document.getElementById('adE').value || 0;
+      const adN = +document.getElementById('adN').value || 0;
+      const disM = +document.getElementById('disM').value || 0;
+      const disE = +document.getElementById('disE').value || 0;
+      const disN = +document.getElementById('disN').value || 0;
+      document.getElementById('totalAd').innerText = adM + adE + adN;
+      document.getElementById('totalDis').innerText = disM + disE + disN;
+      const data = { adM, adE, adN, disM, disE, disN, date: new Date().toISOString().split("T")[0] };
+      localStorage.setItem('summary', JSON.stringify(data));
+      db.collection('summaries').doc('current').set(data);
     }
-
-    function toggleTheme() {
-      const cur = document.documentElement.getAttribute("data-theme") || "light";
-      const next = cur === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", next);
-      localStorage.setItem("theme", next);
-      document.getElementById("themeBtn").innerText = next === "dark" ? "🌙" : "🌞";
+    function restoreSummary() {
+      const saved = localStorage.getItem('summary');
+      if (saved) {
+        const { adM, adE, adN, disM, disE, disN } = JSON.parse(saved);
+        document.getElementById('adM').value = adM;
+        document.getElementById('adE').value = adE;
+        document.getElementById('adN').value = adN;
+        document.getElementById('disM').value = disM;
+        document.getElementById('disE').value = disE;
+        document.getElementById('disN').value = disN;
+      }
+      db.collection('summaries').doc('current').get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          document.getElementById('adM').value = data.adM;
+          document.getElementById('adE').value = data.adE;
+          document.getElementById('adN').value = data.adN;
+          document.getElementById('disM').value = data.disM;
+          document.getElementById('disE').value = data.disE;
+          document.getElementById('disN').value = data.disN;
+          recalcSummary();
+        }
+      });
     }
+    function loadPatients() {
+      const container = document.getElementById('wardsContainer');
+      container.innerHTML = '';
+      const wards = ["PW", "GW", "SW", "PVT", "ICU", "NICU"];
+      const wardGrids = {};
+      const wardCounts = {};
+      const patientsByWard = {};
+      wards.forEach(w => {
+        const sec = document.createElement('div');
+        const header = document.createElement('h2');
+        header.className = 'ward-header';
+        header.style.background = `var(--${w})`;
+        header.id = `header-${w}`;
+        header.innerText = w;
+        sec.appendChild(header);
+        const grid = document.createElement('div');
+        grid.className = 'card-grid';
+        grid.id = `ward-${w}`;
+        sec.appendChild(grid);
+        container.appendChild(sec);
+        wardGrids[w] = grid;
+        wardCounts[w] = 0;
+        patientsByWard[w] = [];
+      });
+      db.collection('patients').get().then(snap => {
+        document.getElementById('totalCount').innerText = snap.size;
+        snap.forEach(doc => {
+          const d = doc.data();
+          if (wards.includes(d.ward)) {
+            patientsByWard[d.ward].push({ id: doc.id, data: d });
+            wardCounts[d.ward]++;
+          }
+        });
+        wards.forEach(w => {
+          patientsByWard[w].sort((a, b) => {
+            const bedA = parseInt(a.data.bed) || 0;
+            const bedB = parseInt(b.data.bed) || 0;
+            return bedA - bedB;
+          });
+          patientsByWard[w].forEach(({ id, data: d }) => {
+            const makeEditable = (field, label = '') =>
+              `<p><strong>${label}</strong><span contenteditable class="editable" onblur="updateField('${id}', '${field}', this.innerText)">${d[field] || ''}</span></p>`;
+            const card = document.createElement('div');
+            card.className = 'patient-card';
+            card.innerHTML = `
+              <button class="delete-btn" onclick="deletePatient('${id}')">×</button>
+              <span class="new-badge${d.isNew ? ' new-active' : ''}" data-id="${id}">NEW</span>
+              <p><strong>Name:</strong> <span contenteditable class="editable" onblur="updateField('${id}', 'name', this.innerText)">${d.name}</span>
+                 (ID: <span contenteditable class="editable" onblur="updateField('${id}', 'id', this.innerText)">${d.id || ''}</span>)</p>
+              <p><strong>DOA:</strong> <span contenteditable class="editable" onblur="updateField('${id}', 'doa', this.innerText)">${d.doa || ''}</span>, <strong>Shift:</strong> <span contenteditable class="editable" onblur="updateField('${id}', 'shift', this.innerText)">${d.shift || ''}</span></p>
+              ${makeEditable('bed', 'Bed: ')}
+              ${makeEditable('age', 'Age: ')}
+              ${makeEditable('sex', 'Sex: ')}
+              ${makeEditable('diagnosis', 'Diagnosis: ')}
+              ${makeEditable('medications', 'Medications: ')}
+              ${makeEditable('issues', 'Issues: ')}
+              <p><strong class="hopi-toggle" id="hopi-toggle-${id}" onclick="toggleHopi('${id}')" aria-expanded="false">HOPI: ►</strong></p>
+              <div class="hopi-content" id="hopi-content-${id}">
+                <span contenteditable class="editable" onblur="updateField('${id}', 'hopi', this.innerText)">${d.hopi || ''}</span>
+              </div>
+              ${makeEditable('plan', 'Plan: ')}
+              <p><strong>Ward:</strong>
+                <select onchange="changeWard('${id}', this.value)">
+                  ${wards.map(wr => `<option value="${wr}" ${wr === d.ward ? 'selected' : ''}>${wr}</option>`).join('')}
+                </select>
+              </p>
+              <p class="new-checkbox">
+                <label><input type="checkbox" ${d.isNew ? 'checked' : ''} onchange="toggleNewTag('${id}')"> New</label>
+              </p>
+            `;
+            wardGrids[w].appendChild(card);
+          });
+          const header = document.getElementById(`header-${w}`);
+          if (header) {
+            header.innerText = `${w} (${wardCounts[w]} patient${wardCounts[w] !== 1 ? 's' : ''})`;
+          }
+        });
 
-    (function init() {
-      const saved = localStorage.getItem("theme") || "light";
-      document.documentElement.setAttribute("data-theme", saved);
-      document.getElementById("themeBtn").innerText = saved === "dark" ? "🌙" : "🌞";
-      calculateDoses();
-    })();
-document.addEventListener("click", function (e) {
-  const rows = document.querySelectorAll("tbody tr");
-  rows.forEach(row => row.classList.remove("touched"));
-
-  let targetRow = e.target.closest("tr");
-  if (targetRow && targetRow.parentElement.tagName === "TBODY") {
-    targetRow.classList.add("touched");
-  }
-});
-
+        // NEW: update the ward breakdown line in the summary card
+        const breakdownOrder = ["PW", "GW", "SW", "PVT", "ICU", "NICU"];
+        const breakdownText = breakdownOrder.map(w => `${w} (${wardCounts[w] || 0})`).join(', ');
+        const breakdownEl = document.getElementById('wardBreakdown');
+        if (breakdownEl) breakdownEl.innerText = breakdownText;
+      });
+    }
+    loadTheme();
+    restoreSummary();
+    loadPatients();
   </script>
 </body>
 </html>
