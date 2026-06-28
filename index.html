@@ -27,6 +27,7 @@
       --border-color: #e0e0e0;
       --primary: #2a9d8f;
       --primary-hover: #21867a;
+      --primary-text: #ffffff;
       --shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
     }
     [data-theme="dark"] {
@@ -36,7 +37,18 @@
       --border-color: #444;
       --primary: #00bfa6;
       --primary-hover: #009d88;
+      --primary-text: #ffffff;
       --shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+    [data-theme="super-dark"] {
+      --bg-color: #000000;
+      --text-color: #e0e0e0;
+      --card-bg: #121212;
+      --border-color: #222;
+      --primary: #00ffd4;
+      --primary-hover: #00ccaa;
+      --primary-text: #000000;
+      --shadow: 0 0 0 1px #222;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -57,7 +69,7 @@
     }
     button {
       padding: 6px 12px; font-size: 1rem;
-      background-color: var(--primary); color: #fff;
+      background-color: var(--primary); color: var(--primary-text);
       border: none; border-radius: 6px;
       cursor: pointer; transition: background-color 0.25s ease;
     }
@@ -67,10 +79,14 @@
     tr:hover td { background-color: #e8f1f3; }
     /* Dark mode hover */
     [data-theme="dark"] tr:hover td { background-color: #2e3b50; }
+    /* Super dark mode hover */
+    [data-theme="super-dark"] tr:hover td { background-color: #1a1a1a; }
 
     /* Touch highlight (mobile compatible) */
     tr.touched td { background-color: #d1ecf1; }
     [data-theme="dark"] tr.touched td { background-color: #2e3b50; }
+    /* Super dark mode touch highlight */
+    [data-theme="super-dark"] tr.touched td { background-color: #1a1a1a; }
 
     .controls {
       display: flex; flex-wrap: wrap; gap: 8px;
@@ -153,6 +169,7 @@
       position: sticky; top: 0;
     }
     [data-theme="dark"] th { background: #33364d; }
+    [data-theme="super-dark"] th { background: #1a1a1a; }
     tr:last-child td { border-bottom: none; }
     .cell-content {
       display: flex;
@@ -492,12 +509,38 @@
       calculateDoses();
     }
 
+    function updateThemeButton(theme) {
+      const btn = document.getElementById("themeBtn");
+      if (theme === "dark") {
+        btn.innerText = "🌙";
+      } else if (theme === "super-dark") {
+        btn.innerText = "🌑";
+      } else {
+        btn.innerText = "🌞";
+      }
+
+      const themeColors = {
+        "light": "#2a9d8f",
+        "dark": "#00bfa6",
+        "super-dark": "#00ffd4"
+      };
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute("content", themeColors[theme] || "#2a9d8f");
+      }
+    }
+
     function toggleTheme() {
       const cur = document.documentElement.getAttribute("data-theme") || "light";
-      const next = cur === "dark" ? "light" : "dark";
+      let next = "light";
+      if (cur === "light") {
+        next = "dark";
+      } else if (cur === "dark") {
+        next = "super-dark";
+      }
       document.documentElement.setAttribute("data-theme", next);
       localStorage.setItem("theme", next);
-      document.getElementById("themeBtn").innerText = next === "dark" ? "🌙" : "🌞";
+      updateThemeButton(next);
     }
 
     const bpData = {
@@ -610,7 +653,7 @@
     (function init() {
       const saved = localStorage.getItem("theme") || "light";
       document.documentElement.setAttribute("data-theme", saved);
-      document.getElementById("themeBtn").innerText = saved === "dark" ? "🌙" : "🌞";
+      updateThemeButton(saved);
       calculateDoses();
     })();
 
